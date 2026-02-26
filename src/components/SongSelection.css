@@ -1,0 +1,86 @@
+.song-selection {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.song-content {
+  width: 100%;
+  max-width: 500px;
+  padding-top: 60px;
+}
+
+.song-title {
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 900;
+  text-align: center;
+  margin: 0 0 8px 0;
+}
+
+.song-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  text-align: center;
+  margin: 0 0 40px 0;
+}
+
+.song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.song-button {
+  background: white;
+  border: none;
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.song-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.song-info {
+  text-align: left;
+}
+
+.song-info h3 {
+  color: #333;
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0 0 4px 0;
+}
+
+.song-info p {
+  color: #00D4AA;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.song-arrow {
+  color: #00D4AA;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+@media (max-width: 480px) {
+  .song-title {
+    font-size: 2rem;
+  }
+  
+  .song-info h3 {
+    font-size: 1.2rem;
+  }
+}

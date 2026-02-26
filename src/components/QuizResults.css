@@ -1,0 +1,148 @@
+.quiz-results {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.results-content {
+  width: 100%;
+  max-width: 500px;
+}
+
+.results-card {
+  background: white;
+  border-radius: 24px;
+  padding: 40px 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.results-emoji {
+  font-size: 80px;
+  margin-bottom: 16px;
+}
+
+.results-title {
+  color: #333;
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0 0 24px 0;
+}
+
+.score-display {
+  margin-bottom: 32px;
+}
+
+.score-number {
+  color: #00D4AA;
+  font-size: 3rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.score-percentage {
+  color: #666;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.completion-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 32px 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.completion-card.not-passed {
+  background: linear-gradient(135deg, #888 0%, #666 100%);
+}
+
+.completion-card h3 {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+}
+
+.completion-date {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.completion-score {
+  color: #00D4AA;
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.results-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-button,
+.restart-button,
+.home-button-quiz {
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.share-button {
+  background: #00D4AA;
+  color: white;
+}
+
+.share-button:active {
+  transform: scale(0.98);
+  background: #00c099;
+}
+
+.restart-button {
+  background: #667eea;
+  color: white;
+}
+
+.restart-button:active {
+  transform: scale(0.98);
+  background: #5568d3;
+}
+
+.home-button-quiz {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.home-button-quiz:active {
+  transform: scale(0.98);
+  background: #e0e0e0;
+}
+
+@media (max-width: 480px) {
+  .results-emoji {
+    font-size: 64px;
+  }
+  
+  .results-title {
+    font-size: 1.6rem;
+  }
+  
+  .score-number {
+    font-size: 2.5rem;
+  }
+  
+  .completion-card h3 {
+    font-size: 1.3rem;
+  }
+}

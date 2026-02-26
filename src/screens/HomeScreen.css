@@ -1,0 +1,124 @@
+.home-screen {
+  min-height: 100vh;
+  padding: 20px;
+  position: relative;
+}
+
+.globe-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.globe-button:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.home-content {
+  max-width: 500px;
+  margin: 0 auto;
+  padding-top: 60px;
+}
+
+.logo-section {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.heart-icon {
+  font-size: 80px;
+  margin-bottom: 16px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.app-title {
+  color: white;
+  font-size: 3rem;
+  font-weight: 900;
+  margin: 0 0 8px 0;
+}
+
+.tagline {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.module-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.module-button {
+  background: white;
+  border: none;
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  text-align: left;
+}
+
+.module-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.module-icon {
+  font-size: 48px;
+  flex-shrink: 0;
+}
+
+.module-text h2 {
+  color: #333;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 4px 0;
+}
+
+.module-text p {
+  color: #666;
+  font-size: 1rem;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .app-title {
+    font-size: 2.5rem;
+  }
+  
+  .heart-icon {
+    font-size: 64px;
+  }
+  
+  .module-icon {
+    font-size: 40px;
+  }
+  
+  .module-text h2 {
+    font-size: 1.3rem;
+  }
+}
