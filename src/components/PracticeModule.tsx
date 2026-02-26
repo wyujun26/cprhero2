@@ -1,630 +1,253 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Activity, Music } from 'lucide-react';
-import LanguageSwitcher from './LanguageSwitcher';
-import TranslationNotice from './TranslationNotice';
+import React, { useState } from 'react';
+import { Language } from '../types';
+import { translations } from '../data/translations';
+import { songs } from '../data/songs';
+import RhythmGame from './RhythmGame';
 
-interface PracticeModuleProps {
-  onBack: () => void;
-  language: string;
-  onChangeLanguage: () => void;
-  onNavigateToQuiz?: () => void;
+interface Props {
+  language: Language;
+  onHome: () => void;
 }
 
-interface Song {
-  name: string;
-  bpm: number;
-}
+const PracticeModule: React.FC<Props> = ({ language, onHome }) => {
+  const [selectedSong, setSelectedSong] = useState<string | null>(null);
+  const [gameFinished, setGameFinished] = useState(false);
+  const [gameResults, setGameResults] = useState<{ correct: number; total: number } | null>(null);
+  const t = translations[language];
 
-const songs: Song[] = [
-  { name: "Stayin' Alive", bpm: 103 },
-  { name: "Eye of the Tiger", bpm: 109 },
-  { name: "Baby Shark", bpm: 115 }
-];
-
-const PracticeModule: React.FC<PracticeModuleProps> = ({ 
-  onBack, 
-  language, 
-  onChangeLanguage,
-  onNavigateToQuiz 
-}) => {
-  const [screen, setScreen] = useState<'select' | 'training' | 'results'>('select');
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [compressionCount, setCompressionCount] = useState(0);
-  const [accuracy, setAccuracy] = useState(100);
-  const [timeLeft, setTimeLeft] = useState(120);
-  const [isResting, setIsResting] = useState(false);
-  const [restTimeLeft, setRestTimeLeft] = useState(2);
-  const [feedback, setFeedback] = useState<'GOOD' | 'TOO EARLY' | 'TOO LATE' | null>(null);
-  const [isPulsing, setIsPulsing] = useState(false);
-  const [totalTaps, setTotalTaps] = useState(0);
-  const [goodTaps, setGoodTaps] = useState(0);
-
-  const pulseIntervalRef = useRef<number | null>(null);
-  const lastPulseTimeRef = useRef<number>(0);
-  const audioContextRef = useRef<AudioContext | null>(null);
-
-  // Initialize audio context
-  useEffect(() => {
-    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, []);
-
-  // Play tap sound
-  const playTapSound = () => {
-    if (!audioContextRef.current) return;
-    
-    const ctx = audioContextRef.current;
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-    
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.1);
+  const handleSongSelect = (songId: string) => {
+    setSelectedSong(songId);
+    setGameFinished(false);
+    setGameResults(null);
   };
 
-  // Start training session
-  useEffect(() => {
-    if (screen !== 'training' || !selectedSong) return;
-
-    const beatInterval = (60 / selectedSong.bpm) * 1000;
-    lastPulseTimeRef.current = Date.now();
-
-    // Pulse animation
-    const startPulse = () => {
-      if (isResting) return;
-      
-      setIsPulsing(true);
-      lastPulseTimeRef.current = Date.now();
-      
-      setTimeout(() => {
-        setIsPulsing(false);
-      }, beatInterval * 0.4);
-    };
-
-    startPulse();
-    pulseIntervalRef.current = window.setInterval(() => {
-      if (!isResting) {
-        startPulse();
-      }
-    }, beatInterval);
-
-    // Main timer
-    const timerInterval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          setScreen('results');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (pulseIntervalRef.current) {
-        clearInterval(pulseIntervalRef.current);
-      }
-      clearInterval(timerInterval);
-    };
-  }, [screen, selectedSong, isResting]);
-
-  // Handle 30:2 cycle
-  useEffect(() => {
-    if (compressionCount > 0 && compressionCount % 30 === 0 && !isResting) {
-      setIsResting(true);
-      setRestTimeLeft(2);
-      
-      if (pulseIntervalRef.current) {
-        clearInterval(pulseIntervalRef.current);
-      }
-
-      const restInterval = setInterval(() => {
-        setRestTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(restInterval);
-            setIsResting(false);
-            return 2;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-  }, [compressionCount, isResting]);
-
-  // Handle tap
-  const handleTap = () => {
-    if (screen !== 'training' || isResting) return;
-
-    playTapSound();
-    
-    const now = Date.now();
-    const timeSinceLastPulse = now - lastPulseTimeRef.current;
-    const beatInterval = selectedSong ? (60 / selectedSong.bpm) * 1000 : 0;
-    const beatWindow = beatInterval * 0.3; // 30% window for "good" timing
-
-    setTotalTaps(prev => prev + 1);
-
-    let feedbackType: 'GOOD' | 'TOO EARLY' | 'TOO LATE';
-    
-    if (timeSinceLastPulse < beatWindow) {
-      feedbackType = 'TOO EARLY';
-    } else if (timeSinceLastPulse > beatInterval - beatWindow && timeSinceLastPulse < beatInterval + beatWindow) {
-      feedbackType = 'GOOD';
-      setGoodTaps(prev => prev + 1);
-      setCompressionCount(prev => prev + 1);
-    } else {
-      feedbackType = 'TOO LATE';
-    }
-
-    setFeedback(feedbackType);
-    
-    // Update accuracy
-    const newAccuracy = totalTaps > 0 ? Math.round(((goodTaps + (feedbackType === 'GOOD' ? 1 : 0)) / (totalTaps + 1)) * 100) : 100;
-    setAccuracy(newAccuracy);
-
-    setTimeout(() => setFeedback(null), 500);
+  const handleGameFinish = (correct: number, total: number) => {
+    setGameFinished(true);
+    setGameResults({ correct, total });
   };
 
-  const handleSongSelect = (song: Song) => {
-    setSelectedSong(song);
-    setScreen('training');
-    setCompressionCount(0);
-    setAccuracy(100);
-    setTimeLeft(120);
-    setIsResting(false);
-    setRestTimeLeft(2);
-    setFeedback(null);
-    setTotalTaps(0);
-    setGoodTaps(0);
-  };
-
-  const resetPractice = () => {
-    setScreen('select');
+  const handleTryAgain = () => {
     setSelectedSong(null);
-    setCompressionCount(0);
-    setAccuracy(100);
-    setTimeLeft(120);
-    setIsResting(false);
-    setRestTimeLeft(2);
-    setFeedback(null);
-    setTotalTaps(0);
-    setGoodTaps(0);
+    setGameFinished(false);
+    setGameResults(null);
   };
 
-  const goToQuiz = () => {
-    if (onNavigateToQuiz) {
-      onNavigateToQuiz();
-    }
-  };
+  if (gameFinished && gameResults) {
+    const accuracy = gameResults.total > 0 ? Math.round((gameResults.correct / gameResults.total) * 100) : 0;
+    const message = accuracy >= 80 ? t.greatRhythm : t.keepPracticing;
 
-  // Screen 1: Song Selection
-  if (screen === 'select') {
     return (
       <div style={{
         minHeight: '100vh',
-        padding: '24px',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         display: 'flex',
-        flexDirection: 'column',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '24px'
-        }}>
-          <button
-            onClick={onBack}
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '12px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '48px'
-            }}
-          >
-            <ArrowLeft size={24} color="white" />
-          </button>
-          <div style={{ flex: 1 }} />
-          <LanguageSwitcher onChangeLanguage={onChangeLanguage} language={language} />
-        </div>
-
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
+          maxWidth: '500px',
+          width: '100%'
         }}>
           <div style={{
-            width: '100%',
-            maxWidth: '480px',
-            background: 'white',
-            borderRadius: '24px',
-            padding: '40px 24px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px 24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            textAlign: 'center'
           }}>
-            <TranslationNotice language={language} />
-            <Music size={80} color="#4ECDC4" style={{ margin: '0 auto 24px', display: 'block' }} />
+            <div style={{ fontSize: '64px', marginBottom: '24px' }}>
+              {accuracy >= 80 ? '🎉' : '💪'}
+            </div>
+            
             <h2 style={{
-              fontSize: '32px',
-              fontWeight: '800',
+              fontSize: '1.8rem',
+              fontWeight: 'bold',
               color: '#333',
-              marginBottom: '16px',
-              textAlign: 'center'
+              marginBottom: '32px'
             }}>
-              Choose Your Song
+              Results
             </h2>
-            <p style={{
-              fontSize: '16px',
-              color: '#666',
-              marginBottom: '32px',
-              lineHeight: '1.6',
-              textAlign: 'center'
-            }}>
-              Select a song to practice your compression rhythm. Tap the circle in sync with the beat.
-            </p>
-
+            
             <div style={{
               display: 'flex',
-              flexDirection: 'column',
+              justifyContent: 'space-around',
+              marginBottom: '32px'
+            }}>
+              <div>
+                <div style={{
+                  fontSize: '2.5rem',
+                  fontWeight: 'bold',
+                  color: '#00D4AA'
+                }}>
+                  {gameResults.total}
+                </div>
+                <div style={{ color: '#666', fontSize: '0.9rem' }}>
+                  Total Taps
+                </div>
+              </div>
+              
+              <div>
+                <div style={{
+                  fontSize: '2.5rem',
+                  fontWeight: 'bold',
+                  color: '#00D4AA'
+                }}>
+                  {accuracy}%
+                </div>
+                <div style={{ color: '#666', fontSize: '0.9rem' }}>
+                  {t.accuracy}
+                </div>
+              </div>
+            </div>
+            
+            <p style={{
+              fontSize: '1.1rem',
+              color: '#555',
+              marginBottom: '32px',
+              lineHeight: '1.6'
+            }}>
+              {message}
+            </p>
+            
+            <div style={{
+              display: 'flex',
               gap: '12px'
             }}>
-              {songs.map((song) => (
-                <button
-                  key={song.name}
-                  onClick={() => handleSongSelect(song)}
-                  style={{
-                    padding: '20px',
-                    borderRadius: '16px',
-                    border: '2px solid #e0e0e0',
-                    background: 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    textAlign: 'left'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#4ECDC4';
-                    e.currentTarget.style.background = '#f0fffe';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e0e0e0';
-                    e.currentTarget.style.background = 'white';
-                  }}
-                >
-                  <div style={{
-                    fontSize: '18px',
-                    fontWeight: '700',
-                    color: '#333',
-                    marginBottom: '4px'
-                  }}>
-                    {song.name}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#666',
-                    fontWeight: '600'
-                  }}>
-                    {song.bpm} BPM
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Screen 2: Training
-  if (screen === 'training') {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        padding: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        userSelect: 'none'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-          color: 'white'
-        }}>
-          <div style={{
-            background: 'rgba(255,255,255,0.2)',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            fontSize: '18px',
-            fontWeight: '700'
-          }}>
-            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-          </div>
-          <LanguageSwitcher onChangeLanguage={onChangeLanguage} language={language} />
-        </div>
-
-        <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '16px',
-          marginBottom: '24px',
-          textAlign: 'center',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            color: '#666',
-            marginBottom: '4px'
-          }}>
-            {selectedSong?.name}
-          </div>
-          <div style={{
-            fontSize: '36px',
-            fontWeight: '800',
-            color: '#4ECDC4'
-          }}>
-            {selectedSong?.bpm} BPM
-          </div>
-        </div>
-
-        <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '16px',
-          marginBottom: '24px',
-          display: 'flex',
-          justifyContent: 'space-around',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-              Compressions
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: '#333' }}>
-              {compressionCount}
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-              Accuracy
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: accuracy >= 80 ? '#4CAF50' : '#FF9800' }}>
-              {accuracy}%
-            </div>
-          </div>
-        </div>
-
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative'
-        }}>
-          {isResting ? (
-            <div style={{
-              textAlign: 'center',
-              color: 'white'
-            }}>
-              <div style={{
-                fontSize: '32px',
-                fontWeight: '800',
-                marginBottom: '16px'
-              }}>
-                REST
-              </div>
-              <div style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                marginBottom: '16px'
-              }}>
-                2 rescue breaths
-              </div>
-              <div style={{
-                fontSize: '48px',
-                fontWeight: '800'
-              }}>
-                {restTimeLeft}
-              </div>
-            </div>
-          ) : (
-            <>
-              <div
-                onClick={handleTap}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  handleTap();
-                }}
+              <button
+                onClick={handleTryAgain}
                 style={{
-                  width: isPulsing ? '280px' : '240px',
-                  height: isPulsing ? '280px' : '240px',
-                  borderRadius: '50%',
-                  background: feedback === 'GOOD' ? '#4CAF50' : 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease-out',
-                  boxShadow: isPulsing 
-                    ? '0 0 40px rgba(78, 205, 196, 0.6)' 
-                    : '0 8px 32px rgba(0,0,0,0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: '#999',
-                  border: '8px solid #4ECDC4'
+                  flex: 1,
+                  backgroundColor: '#00D4AA',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
                 }}
               >
-                TAP
-              </div>
-
-              {feedback && (
-                <div style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  fontSize: '32px',
-                  fontWeight: '800',
-                  color: feedback === 'GOOD' ? '#4CAF50' : '#F44336',
-                  textShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                  pointerEvents: 'none',
-                  animation: 'fadeOut 0.5s ease-out'
-                }}>
-                  {feedback}
-                </div>
-              )}
-            </>
-          )}
+                {t.tryAgain}
+              </button>
+              
+              <button
+                onClick={onHome}
+                style={{
+                  flex: 1,
+                  backgroundColor: '#f0f0f0',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                {t.home}
+              </button>
+            </div>
+          </div>
         </div>
-
-        <style>
-          {`
-            @keyframes fadeOut {
-              0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-              100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
-            }
-          `}
-        </style>
       </div>
     );
   }
 
-  // Screen 3: Results
+  if (selectedSong) {
+    const song = songs.find(s => s.id === selectedSong);
+    if (!song) return null;
+
+    return (
+      <RhythmGame
+        song={song}
+        language={language}
+        onFinish={handleGameFinish}
+        onHome={onHome}
+      />
+    );
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
-      padding: '24px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      padding: '20px',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      position: 'relative'
     }}>
-      <div style={{
-        position: 'absolute',
-        top: '24px',
-        right: '24px'
-      }}>
-        <LanguageSwitcher onChangeLanguage={onChangeLanguage} language={language} />
-      </div>
+      <button
+        onClick={onHome}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          left: '20px',
+          background: 'rgba(255,255,255,0.2)',
+          border: 'none',
+          borderRadius: '8px',
+          padding: '8px 16px',
+          color: 'white',
+          fontSize: '1rem',
+          fontWeight: '600',
+          cursor: 'pointer'
+        }}
+      >
+        ← {t.home}
+      </button>
 
       <div style={{
-        width: '100%',
-        maxWidth: '480px',
-        background: 'white',
-        borderRadius: '24px',
-        padding: '40px 24px',
-        textAlign: 'center',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
+        maxWidth: '600px',
+        margin: '0 auto',
+        paddingTop: '80px'
       }}>
-        <TranslationNotice language={language} />
-        <Activity size={80} color="#4ECDC4" style={{ margin: '0 auto 24px' }} />
-        <h2 style={{
-          fontSize: '32px',
-          fontWeight: '800',
-          color: '#333',
-          marginBottom: '16px'
+        <h1 style={{
+          color: 'white',
+          fontSize: '2rem',
+          fontWeight: 'bold',
+          marginBottom: '40px',
+          textAlign: 'center'
         }}>
-          Training Complete!
-        </h2>
+          {t.selectSong}
+        </h1>
         
         <div style={{
-          background: '#f5f7fa',
-          borderRadius: '16px',
-          padding: '24px',
-          marginBottom: '24px'
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
         }}>
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{
-              fontSize: '14px',
-              color: '#666',
-              marginBottom: '4px'
-            }}>
-              Rhythm Accuracy
-            </div>
-            <div style={{
-              fontSize: '48px',
-              fontWeight: '800',
-              color: accuracy >= 80 ? '#4CAF50' : '#FF9800'
-            }}>
-              {accuracy}%
-            </div>
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: '#666',
-            marginBottom: '4px'
-          }}>
-            Total Compressions
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: '700', color: '#333', marginBottom: '16px' }}>
-            {compressionCount}
-          </div>
-          
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: accuracy >= 80 ? '#4CAF50' : '#FF9800',
-            padding: '16px',
-            background: accuracy >= 80 ? '#e8f5e9' : '#fff3e0',
-            borderRadius: '12px',
-            marginTop: '16px'
-          }}>
-            {accuracy >= 80 
-              ? "Great rhythm! You could save a life." 
-              : "Keep practising — consistency saves lives."}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-          <button
-            onClick={resetPractice}
-            style={{
-              flex: 1,
-              padding: '16px',
-              background: '#f5f7fa',
-              color: '#667eea',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '16px',
-              fontWeight: '700',
-              cursor: 'pointer'
-            }}
-          >
-            Try Again
-          </button>
-          <button
-            onClick={goToQuiz}
-            style={{
-              flex: 1,
-              padding: '16px',
-              background: '#667eea',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '16px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
-            }}
-          >
-            Go to Quiz
-          </button>
+          {songs.map((song) => (
+            <button
+              key={song.id}
+              onClick={() => handleSongSelect(song.id)}
+              style={{
+                backgroundColor: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '24px',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                transition: 'transform 0.2s'
+              }}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <h3 style={{
+                fontSize: '1.3rem',
+                fontWeight: 'bold',
+                color: '#333',
+                marginBottom: '8px'
+              }}>
+                {song.name}
+              </h3>
+              <p style={{
+                color: '#666',
+                fontSize: '1rem'
+              }}>
+                {song.bpm} BPM
+              </p>
+            </button>
+          ))}
         </div>
       </div>
     </div>

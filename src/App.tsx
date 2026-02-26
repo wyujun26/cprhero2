@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import LanguageSelection from './screens/LanguageSelection';
-import HomeScreen from './screens/HomeScreen';
-import LearnModule from './screens/LearnModule';
-import PracticeModule from './screens/PracticeModule';
-import QuizModule from './screens/QuizModule';
-import './App.css';
+import { Language } from './types';
+import LanguageSelection from './components/LanguageSelection';
+import HomeScreen from './components/HomeScreen';
+import LearnModule from './components/LearnModule';
+import PracticeModule from './components/PracticeModule';
+import QuizModule from './components/QuizModule';
 
-export type Language = 'English' | 'Bengali' | 'Tamil' | 'Bahasa Indonesia' | 'Burmese' | 'Chinese';
-export type Screen = 'language' | 'home' | 'learn' | 'practice' | 'quiz';
+type Screen = 'language' | 'home' | 'learn' | 'practice' | 'quiz';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('language');
-  const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>('en');
+
+  useEffect(() => {
+    setCurrentScreen('language');
+  }, []);
 
   const handleLanguageSelect = (language: Language) => {
     setSelectedLanguage(language);
@@ -27,24 +30,24 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="app">
+    <div style={{ minHeight: '100vh' }}>
       {currentScreen === 'language' && (
-        <LanguageSelection onLanguageSelect={handleLanguageSelect} />
+        <LanguageSelection onSelect={handleLanguageSelect} />
       )}
       {currentScreen === 'home' && (
-        <HomeScreen 
+        <HomeScreen
+          language={selectedLanguage}
           onNavigate={handleNavigate}
-          language={selectedLanguage || 'English'}
         />
       )}
       {currentScreen === 'learn' && (
-        <LearnModule onHome={handleHome} language={selectedLanguage || 'English'} />
+        <LearnModule language={selectedLanguage} onHome={handleHome} />
       )}
       {currentScreen === 'practice' && (
-        <PracticeModule onHome={handleHome} language={selectedLanguage || 'English'} />
+        <PracticeModule language={selectedLanguage} onHome={handleHome} />
       )}
       {currentScreen === 'quiz' && (
-        <QuizModule onHome={handleHome} language={selectedLanguage || 'English'} />
+        <QuizModule language={selectedLanguage} onHome={handleHome} />
       )}
     </div>
   );
